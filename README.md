@@ -2,3 +2,4 @@ This is a html Inventory Builder website for csgo_cs https://github.com/mikkokko
 
 Yes is all it is vide code it so i dont care you want too mod it or anything
 https://moongunlol.github.io/csgo-gc-web-gui/
+and yes this is my first ever post in githud
