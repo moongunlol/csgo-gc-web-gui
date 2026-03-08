@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS:GO Inventory Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --panel: #0f1318;
+    --panel2: #141a22;
+    --border: #1e2a38;
+    --border-bright: #2a3f58;
+    --accent: #f6a623;
+    --accent2: #e8c56a;
+    --blue: #4fa3e0;
+    --green: #4ec89a;
+    --red: #e05c5c;
+    --text: #c8d8e8;
+    --text-dim: #6a7f96;
+    --text-bright: #eaf4ff;
+    --covert: #eb4b4b;
+    --classified: #d32ce6;
+    --restricted: #8847ff;
+    --milspec: #4b69ff;
+    --industrial: #5e98d9;
+    --consumer: #b0c3d9;
+    --contraband: #e4ae39;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,163,224,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,163,224,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+  }
+
+  /* Header */
+  header {
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--accent), #c47e0a);
+    clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--text-bright);
+    text-transform: uppercase;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .header-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* Panel */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .panel-header .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  .panel-body { padding: 16px; }
+
+  /* Form fields */
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  select, input[type="number"], input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(246,166,35,0.2);
+  }
+
+  select option { background: #0f1318; }
+
+  /* Rarity swatch */
+  .rarity-select-wrap { position: relative; }
+  .rarity-swatch {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    pointer-events: none;
+    transition: background 0.2s;
+  }
+
+  /* Skin section */
+  .skin-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s;
+  }
+
+  .skin-toggle:hover { border-color: var(--border-bright); }
+  .skin-toggle input[type="checkbox"] { display: none; }
+
+  .toggle-track {
+    width: 36px; height: 18px;
+    background: var(--border);
+    border-radius: 9px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .toggle-track.active {
+    background: rgba(246,166,35,0.3);
+  }
+  .toggle-track.active::after {
+    transform: translateX(18px);
+    background: var(--accent);
+  }
+
+  .toggle-label {
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .skin-fields {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .skin-fields.visible { display: flex; }
+
+  /* Float slider */
+  .float-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .float-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(246,166,35,0.5);
+    cursor: pointer;
+  }
+
+  .float-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+
+  .wear-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+  }
+
+  /* StatTrak toggle */
+  .stattrak-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+
+  .st-label {
+    font-size: 13px;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+
+  .st-label .st-text { color: #cf6a32; }
+
+  .kills-field {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .kills-field label { font-size: 11px; color: var(--text-dim); }
+
+  /* Item number */
+  .item-num-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(246,166,35,0.05);
+    border: 1px solid rgba(246,166,35,0.2);
+    border-radius: 3px;
+  }
+
+  .item-num-row label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent2); }
+  .item-num-row input {
+    width: 80px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--accent);
+    border-radius: 0;
+    padding: 2px 4px;
+    color: var(--accent);
+    font-size: 14px;
+  }
+  .item-num-row input:focus { box-shadow: none; }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #c47e0a);
+    color: #0a0c0f;
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 16px rgba(246,166,35,0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+
+  .btn-add {
+    background: rgba(78,200,154,0.1);
+    color: var(--green);
+    border: 1px solid rgba(78,200,154,0.3);
+  }
+
+  .btn-add:hover {
+    background: rgba(78,200,154,0.2);
+    box-shadow: 0 0 12px rgba(78,200,154,0.2);
+  }
+
+  /* Output panel */
+  .output-panel {
+    grid-column: 1 / -1;
+  }
+
+  .output-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .output-actions { display: flex; gap: 8px; }
+
+  .output-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #8bc4e8;
+    white-space: pre;
+    overflow-x: auto;
+    min-height: 180px;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .output-box:empty::before {
+    content: '// Your generated inventory entries will appear here...';
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  /* Syntax highlighting */
+  .tok-key { color: #6ab0f5; }
+  .tok-val { color: #f6a623; }
+  .tok-comment { color: #4a6a4a; }
+  .tok-brace { color: #e8c56a; }
+  .tok-num { color: #4ec89a; }
+
+  /* Items list */
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .item-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 13px;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .item-chip-name {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--blue);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .item-chip-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .item-chip-del {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .item-chip-del:hover { color: var(--red); }
+
+  /* Status */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .status-count {
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-weight: bold;
+  }
+
+  .copy-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--green);
+    color: #0a0c0f;
+    padding: 10px 20px;
+    border-radius: 3px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    z-index: 100;
+  }
+
+  .copy-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Wear colors */
+  .fn { color: #4ec89a; }
+  .mw { color: #67c1f5; }
+  .ft { color: #a3c4e0; }
+  .ww { color: #b2a77e; }
+  .bs { color: #8b6a4a; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-icon">🔫</div>
+    <div>
+      <h1>CS:GO <span>Inventory</span> Builder</h1>
+      <div class="header-sub">csgo_gc · item config generator</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Left: Builder -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div> Item Config</div>
+      <div class="panel-body">
+        <div class="item-num-row">
+          <label>Item Key</label>
+          <input type="number" id="itemIndex" value="2" min="1" max="9999">
+          <label style="margin-left:12px">Inventory Slot</label>
+          <input type="number" id="inventorySlot" value="1" min="1" max="9999" style="width:60px">
+        </div>
+
+        <div class="field-row">
+          <div class="field full">
+            <label>Weapon / Item</label>
+            <select id="weaponSelect"></select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Quality</label>
+            <select id="qualitySelect">
+              <option value="0">0 — Normal</option>
+              <option value="1">1 — Genuine</option>
+              <option value="2">2 — Vintage</option>
+              <option value="3">3 — ★ Unusual</option>
+              <option value="4">4 — Unique</option>
+              <option value="5" selected>5 — Community</option>
+              <option value="6">6 — Developer (Valve)</option>
+              <option value="7">7 — Selfmade</option>
+              <option value="8">8 — Customized</option>
+              <option value="9">9 — Strange</option>
+              <option value="10">10 — Completed</option>
+              <option value="11">11 — Haunted</option>
+              <option value="12">12 — Souvenir</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Rarity</label>
+            <div class="rarity-select-wrap">
+              <select id="raritySelect">
+                <option value="0">0 — Default</option>
+                <option value="1" selected>1 — Consumer Grade</option>
+                <option value="2">2 — Industrial Grade</option>
+                <option value="3">3 — Mil-Spec Grade</option>
+                <option value="4">4 — Restricted</option>
+                <option value="5">5 — Classified</option>
+                <option value="6">6 — Covert</option>
+                <option value="7">7 — Contraband</option>
+                <option value="99">99 — Unusual</option>
+              </select>
+              <div class="rarity-swatch" id="raritySwatch"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skin toggle -->
+        <label class="skin-toggle" id="skinToggleLabel">
+          <input type="checkbox" id="skinToggle">
+          <div class="toggle-track" id="skinTrack"></div>
+          <span class="toggle-label">Has Skin / Finish</span>
+        </label>
+
+        <div class="skin-fields" id="skinFields">
+          <div class="field">
+            <label>Finish Catalog ID <span style="color:var(--text-dim);font-size:10px">(from csgoskins.gg)</span></label>
+            <input type="number" id="finishCatalog" placeholder="e.g. 344 (Dragon Lore)" min="0">
+          </div>
+          <div class="field">
+            <label>Pattern Template</label>
+            <input type="number" id="patternTemplate" value="0" min="0" max="1000">
+          </div>
+          <div class="float-wrap">
+            <div class="float-header">
+              <label>Float Value</label>
+              <span id="wearBadge" class="wear-badge fn">Factory New</span>
+            </div>
+            <input type="range" id="floatSlider" min="0" max="1" step="0.0001" value="0.01">
+            <input type="text" id="floatInput" value="0.0100" style="font-size:12px;margin-top:4px">
+            <div class="float-labels">
+              <span>FN 0.00</span><span>MW 0.07</span><span>FT 0.15</span><span>WW 0.38</span><span>BS 0.45+</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- StatTrak -->
+        <div class="stattrak-row" style="margin-top:12px">
+          <input type="checkbox" id="statTrakCheck" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer">
+          <span class="st-label"><span class="st-text">StatTrak™</span></span>
+          <div class="kills-field" id="killsField" style="display:none">
+            <label>Kills</label>
+            <input type="number" id="killsInput" value="0" min="0" max="999999" style="width:80px">
+          </div>
+        </div>
+
+        <!-- Equipped State -->
+        <div style="margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:3px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <input type="checkbox" id="equippedCheck" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer">
+            <span style="font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase">equipped_state</span>
+            <span style="font-size:11px;color:var(--text-dim);margin-left:4px">+ default_equips entry</span>
+          </div>
+          <div id="equippedFields" style="display:none">
+            <div class="field-row" style="margin-bottom:0">
+              <div class="field">
+                <label>Class ID <span style="color:var(--text-dim);font-size:10px">(2=CT 3=T)</span></label>
+                <select id="classId">
+                  <option value="2">2 — CT</option>
+                  <option value="3" selected>3 — T</option>
+                  <option value="4">4 — Both</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Slot ID <span style="color:var(--text-dim);font-size:10px">(0=primary 1=pistol 2=knife)</span></label>
+                <select id="slotId">
+                  <option value="0">0 — Primary</option>
+                  <option value="1">1 — Pistol</option>
+                  <option value="2" selected>2 — Knife/Gloves</option>
+                  <option value="3">3 — C4</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-add" onclick="addItem()">+ Add Item</button>
+          <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Queue -->
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div> Item Queue</div>
+      <div class="panel-body">
+        <div class="items-list" id="itemsList">
+          <div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center;font-style:italic">
+            No items added yet. Configure and add items to build your inventory.
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="generateAll()">⚙ Generate Output</button>
+          <button class="btn btn-secondary" onclick="clearAll()">Clear All</button>
+        </div>
+      </div>
+      <div class="status-bar">
+        <span>Items queued:</span>
+        <span class="status-count" id="queueCount">0</span>
+        <span style="margin-left:auto">csgo_gc format</span>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="panel output-panel">
+      <div class="panel-header">
+        <div class="dot"></div>
+        <div class="output-header-row" style="flex:1;display:flex;align-items:center;justify-content:space-between">
+          <span>Generated Output</span>
+          <div class="output-actions">
+            <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px" onclick="copyOutput()">Copy</button>
+            <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px" onclick="downloadOutput()">Download .txt</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <div class="output-box" id="outputBox"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast">✓ Copied to clipboard!</div>
+
+<script>
+const WEAPONS = [
+  {id:1,name:"Deagle"},{id:2,name:"Dual Berettas"},{id:3,name:"Five-SeveN"},{id:4,name:"Glock-18"},
+  {id:7,name:"AK-47"},{id:8,name:"AUG"},{id:9,name:"AWP"},{id:10,name:"FAMAS"},{id:11,name:"G3SG1"},
+  {id:13,name:"Galil AR"},{id:14,name:"M249"},{id:16,name:"M4A4"},{id:17,name:"MAC-10"},
+  {id:19,name:"P90"},{id:23,name:"MP5-SD"},{id:24,name:"UMP-45"},{id:25,name:"XM1014"},
+  {id:26,name:"PP-Bizon"},{id:27,name:"MAG-7"},{id:28,name:"Negev"},{id:29,name:"Sawed-Off"},
+  {id:30,name:"Tec-9"},{id:32,name:"HKP2000"},{id:33,name:"MP7"},{id:34,name:"MP9"},
+  {id:35,name:"Nova"},{id:36,name:"P250"},{id:38,name:"SCAR-20"},{id:39,name:"SG 553"},
+  {id:40,name:"SSG 08"},{id:42,name:"Default Knife (CT)"},{id:59,name:"Default Knife (T)"},
+  {id:60,name:"M4A1-S"},{id:61,name:"USP-S"},{id:63,name:"CZ75-Auto"},{id:64,name:"R8 Revolver"},
+  {id:43,name:"Flashbang"},{id:44,name:"HE Grenade"},{id:45,name:"Smoke Grenade"},
+  {id:46,name:"Molotov"},{id:47,name:"Decoy"},{id:48,name:"Incendiary"},{id:49,name:"C4"},
+  {id:50,name:"Kevlar"},{id:51,name:"Kevlar + Helmet"},{id:54,name:"NVG"},{id:55,name:"Defuse Kit"},
+  {id:57,name:"Healthshot"},{id:58,name:"Music Kit"},
+  // Knives
+  {id:500,name:"★ Bayonet"},{id:503,name:"★ Classic Knife"},{id:505,name:"★ Flip Knife"},
+  {id:506,name:"★ Gut Knife"},{id:507,name:"★ Karambit"},{id:508,name:"★ M9 Bayonet"},
+  {id:509,name:"★ Huntsman Knife"},{id:512,name:"★ Falchion Knife"},{id:514,name:"★ Bowie Knife"},
+  {id:515,name:"★ Butterfly Knife"},{id:516,name:"★ Shadow Daggers"},
+  {id:517,name:"★ Cord Knife"},{id:518,name:"★ Canis Knife"},{id:519,name:"★ Ursus Knife"},
+  {id:520,name:"★ Navaja Knife"},{id:522,name:"★ Stiletto Knife"},
+  {id:523,name:"★ Widowmaker"},{id:525,name:"★ Skeleton Knife"},
+  // Gloves
+  {id:5027,name:"★ Bloodhound Gloves"},{id:4725,name:"★ Broken Fang Gloves"},
+  {id:5031,name:"★ Driver Gloves"},{id:5032,name:"★ Hand Wraps"},
+  {id:5035,name:"★ Hydra Gloves"},{id:5033,name:"★ Moto Gloves"},
+  {id:5034,name:"★ Specialist Gloves"},{id:5030,name:"★ Sport Gloves"},
+  // Agents CT
+  {id:4771,name:"Cmdr. Frank \"Wet Sox\" Baroud"},{id:4711,name:"Cmdr. Mae \"Dead Cold\" Jamison"},
+  {id:5308,name:"Special Agent Ava | FBI"},{id:4750,name:"Chem-Haz Capitaine"},
+  {id:4772,name:"Lieutenant Rex Krikey"},{id:4712,name:"1st Lieutenant Farlow"},
+  {id:5403,name:"\"Two Times\" McCoy"},{id:4619,name:"\"Blueberries\" Buckshot"},
+  {id:4753,name:"Officer Jacques Beltram"},{id:4715,name:"Sergeant Bombson"},
+  {id:5306,name:"Markus Delrow | FBI HRT"},{id:5602,name:"D Squadron Officer"},
+  {id:5401,name:"Seal Team 6 Soldier"},{id:5305,name:"Operator | FBI SWAT"},
+  // Agents T
+  {id:4726,name:"Sir Bloody Miami Darryl"},{id:4733,name:"Sir Bloody Silent Darryl"},
+  {id:5108,name:"The Elite Mr. Muhlik"},{id:4777,name:"Vypa Sista of the Revolution"},
+  {id:4732,name:"Number K"},{id:4727,name:"Safecracker Voltzmann"},
+  {id:5503,name:"Blackwolf | Sabre"},{id:4730,name:"Getaway Sally"},
+  {id:5500,name:"Dragomir | Sabre"},{id:4781,name:"Trapper"},
+  {id:4778,name:"Trapper Aggressor"},{id:5109,name:"Jungle Rebel"},
+  {id:5208,name:"Street Soldier | Phoenix"},
+];
+
+const RARITY_COLORS = {
+  0:'#b0c3d9',1:'#b0c3d9',2:'#5e98d9',3:'#4b69ff',
+  4:'#8847ff',5:'#d32ce6',6:'#eb4b4b',7:'#e4ae39',99:'#8847ff'
+};
+
+let items = [];
+
+// Populate weapon select
+const ws = document.getElementById('weaponSelect');
+WEAPONS.forEach(w => {
+  const o = document.createElement('option');
+  o.value = w.id;
+  o.textContent = `${w.id} — ${w.name}`;
+  ws.appendChild(o);
+});
+
+// Rarity swatch update
+function updateRaritySwatch() {
+  const v = parseInt(document.getElementById('raritySelect').value);
+  document.getElementById('raritySwatch').style.background = RARITY_COLORS[v] || '#888';
+}
+document.getElementById('raritySelect').addEventListener('change', updateRaritySwatch);
+updateRaritySwatch();
+
+// Skin toggle
+document.getElementById('skinToggle').addEventListener('change', function() {
+  const track = document.getElementById('skinTrack');
+  const fields = document.getElementById('skinFields');
+  track.classList.toggle('active', this.checked);
+  fields.classList.toggle('visible', this.checked);
+});
+
+// Float sync
+const floatSlider = document.getElementById('floatSlider');
+const floatInput = document.getElementById('floatInput');
+const wearBadge = document.getElementById('wearBadge');
+
+function getWear(f) {
+  if (f < 0.07) return ['Factory New','fn'];
+  if (f < 0.15) return ['Minimal Wear','mw'];
+  if (f < 0.38) return ['Field-Tested','ft'];
+  if (f < 0.45) return ['Well-Worn','ww'];
+  return ['Battle-Scarred','bs'];
+}
+
+function updateWear(v) {
+  const [label, cls] = getWear(parseFloat(v));
+  wearBadge.textContent = label;
+  wearBadge.className = `wear-badge ${cls}`;
+}
+
+floatSlider.addEventListener('input', () => {
+  floatInput.value = parseFloat(floatSlider.value).toFixed(4);
+  updateWear(floatSlider.value);
+});
+
+floatInput.addEventListener('input', () => {
+  let v = parseFloat(floatInput.value);
+  if (!isNaN(v)) {
+    v = Math.max(0, Math.min(1, v));
+    floatSlider.value = v;
+    updateWear(v);
+  }
+});
+
+// StatTrak
+document.getElementById('statTrakCheck').addEventListener('change', function() {
+  document.getElementById('killsField').style.display = this.checked ? 'flex' : 'none';
+});
+
+// Equipped state
+document.getElementById('equippedCheck').addEventListener('change', function() {
+  document.getElementById('equippedFields').style.display = this.checked ? 'block' : 'none';
+});
+
+function getWeaponName(id) {
+  const w = WEAPONS.find(x => x.id == id);
+  return w ? w.name : `ID:${id}`;
+}
+
+function addItem() {
+  const idx = parseInt(document.getElementById('itemIndex').value);
+  const invSlot = parseInt(document.getElementById('inventorySlot').value);
+  const defIndex = parseInt(document.getElementById('weaponSelect').value);
+  const quality = parseInt(document.getElementById('qualitySelect').value);
+  const rarity = parseInt(document.getElementById('raritySelect').value);
+  const hasSkin = document.getElementById('skinToggle').checked;
+  const statTrak = document.getElementById('statTrakCheck').checked;
+  const kills = parseInt(document.getElementById('killsInput').value) || 0;
+  const equipped = document.getElementById('equippedCheck').checked;
+  const classId = parseInt(document.getElementById('classId').value);
+  const slotId = parseInt(document.getElementById('slotId').value);
+
+  let skin = null;
+  if (hasSkin) {
+    const fc = document.getElementById('finishCatalog').value;
+    if (!fc) { alert('Enter a Finish Catalog ID for the skin.'); return; }
+    skin = {
+      finish: parseFloat(fc),
+      pattern: parseFloat(document.getElementById('patternTemplate').value) || 0,
+      float: parseFloat(document.getElementById('floatInput').value) || 0.01
+    };
+  }
+
+  items.push({ idx, invSlot, defIndex, quality, rarity, skin, statTrak, kills, equipped, classId, slotId });
+  document.getElementById('itemIndex').value = idx + 1;
+  document.getElementById('inventorySlot').value = invSlot + 1;
+  renderQueue();
+}
+
+function renderQueue() {
+  const list = document.getElementById('itemsList');
+  document.getElementById('queueCount').textContent = items.length;
+
+  if (items.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center;font-style:italic">No items added yet.</div>';
+    return;
+  }
+
+  list.innerHTML = items.map((item, i) => {
+    const name = getWeaponName(item.defIndex);
+    const rarityColor = RARITY_COLORS[item.rarity] || '#888';
+    const meta = [
+      item.skin ? `Float: ${item.skin.float.toFixed(4)}` : 'No skin',
+      item.statTrak ? `ST™ (${item.kills}k)` : null
+    ].filter(Boolean).join(' · ');
+    return `<div class="item-chip">
+      <span style="color:${rarityColor};font-size:11px;min-width:6px">■</span>
+      <span class="item-chip-name">#${item.idx} ${name}</span>
+      <span class="item-chip-meta">${meta}</span>
+      <button class="item-chip-del" onclick="removeItem(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+
+function removeItem(i) {
+  items.splice(i, 1);
+  renderQueue();
+}
+
+function clearAll() {
+  if (items.length && !confirm('Clear all items?')) return;
+  items = [];
+  renderQueue();
+  document.getElementById('outputBox').innerHTML = '';
+}
+
+function resetForm() {
+  document.getElementById('weaponSelect').selectedIndex = 0;
+  document.getElementById('qualitySelect').value = '5';
+  document.getElementById('raritySelect').value = '1';
+  document.getElementById('skinToggle').checked = false;
+  document.getElementById('skinTrack').classList.remove('active');
+  document.getElementById('skinFields').classList.remove('visible');
+  document.getElementById('statTrakCheck').checked = false;
+  document.getElementById('killsField').style.display = 'none';
+  document.getElementById('equippedCheck').checked = false;
+  document.getElementById('equippedFields').style.display = 'none';
+  document.getElementById('floatSlider').value = 0.01;
+  document.getElementById('floatInput').value = '0.0100';
+  updateWear(0.01);
+  updateRaritySwatch();
+}
+
+function generateEntry(item) {
+  const lines = [];
+  lines.push(`\t"${item.idx}"`);
+  lines.push(`\t{`);
+  lines.push(`\t\t"inventory"\t\t"${item.invSlot}"`);
+  lines.push(`\t\t"def_index"\t\t"${item.defIndex}"`);
+  lines.push(`\t\t"level"\t\t\t"1"`);
+  lines.push(`\t\t"quality"\t\t"${item.quality}"`);
+  lines.push(`\t\t"flags"\t\t\t"0"`);
+  lines.push(`\t\t"origin"\t\t"24"`);
+  lines.push(`\t\t"in_use"\t\t"0"`);
+  lines.push(`\t\t"rarity"\t\t"${item.rarity}"`);
+
+  const hasAttribs = item.skin || item.statTrak;
+  if (hasAttribs) {
+    lines.push(`\t\t"attributes"`);
+    lines.push(`\t\t{`);
+    if (item.skin) {
+      lines.push(`\t\t\t"6"\t\t"${item.skin.finish.toFixed(6)}"`);
+      lines.push(`\t\t\t"7"\t\t"${item.skin.pattern.toFixed(6)}"`);
+      lines.push(`\t\t\t"8"\t\t"${item.skin.float.toFixed(6)}"`);
+    }
+    if (item.statTrak) {
+      lines.push(`\t\t\t"80"\t\t"${item.kills}"`);
+      lines.push(`\t\t\t"81"\t\t"0"`);
+    }
+    lines.push(`\t\t}`);
+  }
+
+  if (item.equipped) {
+    lines.push(`\t\t"equipped_state"`);
+    lines.push(`\t\t{`);
+    lines.push(`\t\t\t"${item.classId}"\t\t"${item.slotId}"`);
+    lines.push(`\t\t}`);
+  }
+
+  lines.push(`\t}`);
+  return lines.join('\n');
+}
+
+function generateDefaultEquip(item) {
+  const lines = [];
+  lines.push(`\t"${item.defIndex}"`);
+  lines.push(`\t{`);
+  lines.push(`\t\t"class_id"\t\t"${item.classId}"`);
+  lines.push(`\t\t"slot_id"\t\t"${item.slotId}"`);
+  lines.push(`\t}`);
+  return lines.join('\n');
+}
+
+function getQualityName(id) {
+  return ['Normal','Genuine','Vintage','Unusual','Unique','Community','Developer','Selfmade','Customized','Strange','Completed','Haunted','Souvenir'][id] || id;
+}
+
+function getRarityName(id) {
+  return {0:'Default',1:'Consumer Grade',2:'Industrial Grade',3:'Mil-Spec',4:'Restricted',5:'Classified',6:'Covert',7:'Contraband',99:'Unusual'}[id] || id;
+}
+
+function syntaxHighlight(code) {
+  return code
+    .replace(/\/\/.+/g, m => `<span class="tok-comment">${m}</span>`)
+    .replace(/"([^"]+)"\s*(?=")/g, (m, k) => `<span class="tok-key">"${k}"</span> `)
+    .replace(/(?<=\s)"([^"]+)"(?!\s*")/g, (m, v) => `<span class="tok-val">"${v}"</span>`)
+    .replace(/^([{}])$/gm, m => `<span class="tok-brace">${m}</span>`)
+    .replace(/\t([{}])/g, (m, b) => `\t<span class="tok-brace">${b}</span>`);
+}
+
+function generateAll() {
+  if (items.length === 0) {
+    alert('Add at least one item first.');
+    return;
+  }
+  const raw = getRawOutput();
+  const highlighted = syntaxHighlight(escapeHtml(raw));
+  document.getElementById('outputBox').innerHTML = highlighted;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function getRawOutput() {
+  const itemEntries = items.map(generateEntry).join('\n');
+  const equippedItems = items.filter(i => i.equipped);
+
+  let out = `"items"\n{\n${itemEntries}\n}`;
+
+  if (equippedItems.length > 0) {
+    const equips = equippedItems.map(generateDefaultEquip).join('\n');
+    out += `\n"default_equips"\n{\n${equips}\n}`;
+  }
+
+  return out;
+}
+
+function copyOutput() {
+  const raw = getRawOutput();
+  if (!raw) { alert('Generate output first.'); return; }
+  navigator.clipboard.writeText(raw).then(() => {
+    const toast = document.getElementById('copyToast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  });
+}
+
+function downloadOutput() {
+  const raw = getRawOutput();
+  if (!raw) { alert('Generate output first.'); return; }
+  const blob = new Blob([raw], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'inventory_items.txt';
+  a.click();
+}
+</script>
+</body>
+</html>
