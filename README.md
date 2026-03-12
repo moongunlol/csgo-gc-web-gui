@@ -8,5 +8,5 @@ Yes is all vide code so i dont care you want to mod it or anything
 https://moongunlol.github.io/csgo-gc-web-gui/
 ## Need to download
 
-Dowload `all.json` form ByMykel https://github.com/ByMykel/CSGO-API/blob/main/public/api/en/all.json
+Dowload `all.json` from ByMykel https://github.com/ByMykel/CSGO-API/blob/main/public/api/en/all.json
 ![Logo](https://github.com/moongunlol/csgo-gc-web-gui/blob/main/Screenshot%202026-03-12%20170213.png?raw=true)
