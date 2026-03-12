@@ -845,6 +845,28 @@ input[type=checkbox]#skinToggle {
   max-height:480px;
   background:#060809;
 }
+.output-plain {
+  font-family:'Share Tech Mono',monospace;
+  font-size:12px;
+  line-height:1.8;
+  white-space:pre;
+  color:var(--text);
+  margin:0;
+  border:none;
+  background:transparent;
+}
+.gen-progress-wrap {
+  height:3px;
+  background:rgba(255,255,255,0.05);
+  overflow:hidden;
+  display:none;
+}
+.gen-progress-bar {
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--blue));
+  transition:width 0.12s linear;
+}
 
 .tok-key {
   color:#4fa3e0;
@@ -1320,6 +1342,17 @@ input[type=checkbox]#skinToggle {
   gap:8px;
   padding:12px;
   min-height:80px;
+}
+
+
+.queue-show-all-btn { background:transparent;border:none;color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;text-transform:uppercase;padding:0; }
+.queue-overflow-notice {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 10px 0 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
 }
 
 .queue-empty {
@@ -3081,7 +3114,7 @@ input[type=checkbox]#skinToggle {
             <input type="number" id="finishCatalogManual" placeholder="e.g. 344" min="0" oninput="onManualId()" style="flex:1">
           </div>
           <div class="field" id="patternField">
-            <label id="patternLabel">Pattern Template <a href="https://csgoskins.gg" target="_blank" rel="noopener" style="font-size:10px;color:var(--text-dim);text-decoration:none;border-bottom:1px dotted var(--text-dim);letter-spacing:0.5px;transition:color 0.15s" onmouseover="this.style.color='var(--accent)';" onmouseout="this.style.color='var(--text-dim)'">csgoskins.gg &#8599;</a></label>
+            <label id="patternLabel">Pattern Template / Seed <a href="https://csgoskins.gg" target="_blank" rel="noopener" style="font-size:10px;color:var(--text-dim);text-decoration:none;border-bottom:1px dotted var(--text-dim);letter-spacing:0.5px;transition:color 0.15s" onmouseover="this.style.color='var(--accent)';" onmouseout="this.style.color='var(--text-dim)'">csgoskins.gg &#8599;</a></label>
             <div style="display:flex;gap:6px;align-items:center">
               <input type="number" id="patternTemplate" value="0" min="0" max="1000" style="flex:1">
               <button onclick="document.getElementById('patternTemplate').value=Math.floor(Math.random()*1001)" style="background:transparent;border:1px solid var(--border-bright);color:var(--text-dim);padding:4px 8px;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-radius:2px;cursor:pointer;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border-bright)';this.style.color='var(--text-dim)'">&#127922; RNG</button>
@@ -3205,7 +3238,7 @@ input[type=checkbox]#skinToggle {
           <div class="dot green"></div> Item Queue
           <span style="margin-left:auto;display:flex;gap:6px">
             <button class="btn btn-add" id="generateBtn" style="padding:3px 14px;font-size:11px" onclick="generateAll()">&#9881; Generate</button><button id="cancelUpdateBtn" title="Exit update mode — next Generate will create a new entry" onclick="clearActiveHistoryEntry()" style="display:none;padding:3px 8px;font-size:11px;background:transparent;border:1px solid var(--border-bright);color:var(--text-dim);border-radius:2px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.5px;cursor:pointer" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">&#215; New</button>
-            <button class="btn btn-secondary" id="removeStBtn" style="padding:3px 10px;font-size:11px;display:none" onclick="removeAllStatTrak()" title="Remove all StatTrak items from queue">&#215; All ST</button>
+            <button class="btn btn-secondary" id="removeStBtn" style="padding:3px 10px;font-size:11px;display:none" onclick="removeAllStatTrak()" title="Strip StatTrak™ from all items (keeps items in queue)">&#215; All ST</button>
             <button class="btn btn-secondary" style="padding:3px 10px;font-size:11px" onclick="clearAll()">Clear All</button>
           </span>
         </div>
@@ -3232,6 +3265,7 @@ input[type=checkbox]#skinToggle {
             <button class="btn btn-secondary" style="padding:3px 12px;font-size:11px" onclick="downloadOutput()">Download</button>
           </span>
         </div>
+        <div class="gen-progress-wrap" id="genProgressWrap"><div class="gen-progress-bar" id="genProgressBar"></div></div>
         <div class="output-box" id="outputBox"></div>
       </div>
 
@@ -3621,6 +3655,11 @@ function selectCategory(catId) {
 function getCategoryById(id) { for (var i=0;i<CATEGORIES.length;i++) if (CATEGORIES[i].id===id) return CATEGORIES[i]; return null; }
 
 function selectWeapon(id) {
+  /* If switching to a different weapon while in multi-pick, clear selections */
+  if (multiPickMode && id !== selectedWeaponId) {
+    multiSelectedSkins = [];
+    updateMultipickBar();
+  }
   selectedWeaponId=id;
   /* Update all weapon buttons across all grids */
   var all=document.querySelectorAll('.weapon-btn');
@@ -3852,6 +3891,8 @@ function processSkinData(data,fname) {
   for (var i=0;i<skinsArr.length;i++) {
     var s=skinsArr[i];
     if (!s.paint_index||parseInt(s.paint_index)<=0) continue;
+    /* Skip Zeus x27 — not a standard skimmable weapon */
+    if (s.weapon&&s.weapon.id==='weapon_taser') continue;
     var wname=(s.weapon&&s.weapon.name)?s.weapon.name:'Other';
     var key=s.paint_index+'|'+wname;
     if (seen[key]) continue;
@@ -4155,7 +4196,10 @@ function onBrowserSearch() {
   browserSearchTimer=setTimeout(renderGrid,180);
 }
 
-function renderGrid() {
+/* Debounced renderGrid — collapses rapid successive calls into one animation frame */
+var _rgPending = false;
+var _renderGridReal = function() {
+  _rgPending = false;
   if (!skinDBLoaded) return;
   var wrap=document.getElementById('skinGridWrap');
   var savedScroll=wrap.scrollTop;
@@ -4198,7 +4242,7 @@ function renderGrid() {
       var mkCls='skin-card';
       if (mkMultiKeys[mkit.def_index]) mkCls+=' multi-sel';
       else if (mkQueueSet[String(mkit.def_index)]) mkCls+=' in-queue';
-      else if (selectedSkinId===mkit.def_index&&selectedSkinWeapon==='__music_kit__') mkCls+=' selected';
+      else if (!multiPickMode&&selectedSkinId===mkit.def_index&&selectedSkinWeapon==='__music_kit__') mkCls+=' selected';
       mkHtml+='<div class="'+mkCls+'"'
       +' onclick="onMusicKitClick(\''+escJs(mkit.def_index)+'\')"'
       +' onmouseenter="showMKTooltip(\''+escJs(mkit.def_index)+'\',\''+escJs(mkit.name)+'\',event.clientX,event.clientY)"'
@@ -4278,7 +4322,7 @@ function renderGrid() {
     /* Priority: multi-sel > in-queue > selected (prevents orange overriding purple/green) */
     if (multiKeys[cardKey]) cls+=' multi-sel';
     else if (queueSet[cardKey]) cls+=' in-queue';
-    else if (sk.paint_index===selectedSkinId&&wname===selectedSkinWeapon) cls+=' selected';
+    else if (!multiPickMode&&sk.paint_index===selectedSkinId&&wname===selectedSkinWeapon) cls+=' selected';
     var wnSafe=escJs(wname);
     html+='<div class="'+cls+'"'
     +' onclick="onCardClick(\''+sk.paint_index+'\',\''+wnSafe+'\')"'
@@ -4297,6 +4341,12 @@ function renderGrid() {
   document.getElementById('skinGrid').innerHTML=html;
   /* Restore scroll — no jumping to top */
   wrap.scrollTop=savedScroll;
+};
+function renderGrid() {
+  if (!skinDBLoaded) return;
+  if (_rgPending) return; /* already queued this frame */
+  _rgPending = true;
+  requestAnimationFrame(_renderGridReal);
 }
 
 function getRarityColor(sr) {
@@ -4493,7 +4543,9 @@ function _runCaseOpen() {
   /* Pick 40 random skins for the strip, last one (index 35) is the result */
   var pool = [];
   while (pool.length < 40) {
-    pool.push(skinDB[Math.floor(Math.random() * skinDB.length)]);
+    var _s = skinDB[Math.floor(Math.random() * skinDB.length)];
+    if (_s.weapon && _s.weapon.id === 'weapon_taser') continue;
+    pool.push(_s);
   }
   var winner = pool[35];
   _caseResult = { paintIndex: winner.paint_index, weaponName: (winner.weapon && winner.weapon.name) ? winner.weapon.name : '' };
@@ -4763,8 +4815,12 @@ function renderQueue() {
     document.getElementById('queueActionBar').className='queue-action-bar';
     return;
   }
+
+  var MAX_VISIBLE = 120;
+  var renderCount = Math.min(items.length, MAX_VISIBLE);
   var html='';
-  for (var i=0;i<items.length;i++) {
+
+  for (var i=0;i<renderCount;i++) {
     var item=items[i];
     var wname=item.isAgent?getAgentName(item.defIndex):getWeaponName(item.defIndex);
     var rc=RARITY_COLORS[item.rarity]||'#888';
@@ -4805,6 +4861,13 @@ function renderQueue() {
     if (item.statTrak) html+='<span class="inv-card-st">ST&#8482; '+item.kills+'</span>';
     html+='</div></div>';
   }
+
+  if (items.length > MAX_VISIBLE) {
+    var hidden = items.length - MAX_VISIBLE;
+    html += '<div class="queue-overflow-notice">&#8942; <b>' + hidden + '</b> more item' + (hidden !== 1 ? 's' : '') +
+      ' not shown &mdash; <button onclick="renderQueueFull()" style="background:transparent;border:none;color:var(--accent);font-family:Rajdhani,sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;text-transform:uppercase;padding:0">Show All</button></div>';
+  }
+
   grid.innerHTML = html;
   updateQueueActionBar();
   /* Show/hide Remove All ST button */
@@ -4841,15 +4904,68 @@ function removeSelected() {
   queueSelectedSet={};renderQueue();if (skinDBLoaded)renderGrid();
 }
 
+
+function renderQueueFull() {
+  /* Render all items without the cap — user explicitly asked */
+  var grid = document.getElementById('queueGrid');
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var wname = item.isAgent ? getAgentName(item.defIndex) : getWeaponName(item.defIndex);
+    var rc = RARITY_COLORS[item.rarity] || '#888';
+    var isSel = queueSelectedSet[i] ? ' selected' : '';
+    var skinImg = '', skinShortName = '';
+    if (item.isSticker) {
+      skinImg = item.stickerImage || '';
+      skinShortName = item.stickerName || ('Sticker #' + item.stickerDefIndex);
+    } else if (item.isAgent) {
+      skinImg = agentImageMap[item.defIndex] || '';
+    } else if (item.isMusicKit) {
+      skinImg = item.mkImage || '';
+      skinShortName = item.mkName || ('Kit #' + item.defIndex);
+    } else if (item.skin) {
+      var imgKey2 = item.skin.paintIndex + '|' + (item.skin.weaponName || '');
+      skinImg = item.skin.cachedImage || skinImageMap[imgKey2] || skinImageMapDefault[item.skin.paintIndex] || '';
+      var fullName2 = getSkinName(item.skin.paintIndex, item.skin.weaponName || '');
+      var p3 = fullName2.indexOf(' | ');
+      skinShortName = p3 >= 0 ? fullName2.slice(p3 + 3) : fullName2;
+      skinShortName = skinShortName.replace(/\s*\((Factory New|Minimal Wear|Field-Tested|Well-Worn|Battle-Scarred)\)\s*$/, '');
+    }
+    var wearCls2 = item.skin ? getWear(item.skin.float) : '';
+    var wearLabel2 = wearCls2 ? getWearLabel(wearCls2) : '';
+    var wearColor2 = wearCls2 ? (WEAR_COLORS[wearCls2] || '') : '';
+    html += '<div class="inv-card' + isSel + '" onclick="toggleQueueSel(' + i + ')">';
+    html += '<div class="inv-card-rbar" style="background:' + rc + '"></div>';
+    html += '<span class="inv-card-key">#' + item.idx + '</span>';
+    html += '<button class="inv-card-del" onclick="event.stopPropagation();removeItem(' + i + ')" title="Remove">&#215;</button>';
+    html += '<button class="inv-card-edit" onclick="event.stopPropagation();openQueueEdit(' + i + ')" title="Edit item">Edit</button>';
+    html += '<div class="inv-card-sel">\u2713</div>';
+    if (skinImg) html += '<img class="inv-card-img" src="' + escAttr(skinImg) + '" loading="lazy" onerror="this.style.visibility=\'hidden\'" style="' + (item.isAgent ? 'object-fit:cover;object-position:top center' : 'object-fit:contain') + '">';
+    else html += '<div class="inv-card-placeholder">' + (item.isAgent ? '&#128100;' : (item.isSticker ? '&#127828;' : '&#128299;')) + '</div>';
+    html += '<div class="inv-card-weapon">' + escHtml(wname) + '</div>';
+    if (skinShortName) html += '<div class="inv-card-name">' + escHtml(skinShortName) + '</div>';
+    else html += '<div class="inv-card-name no-skin">' + (item.isAgent ? 'Agent' : (item.isSticker ? 'Sticker' : 'No skin')) + '</div>';
+    html += '<div class="inv-card-badges">';
+    if (wearLabel2) html += '<span class="inv-card-wear" style="color:' + wearColor2 + ';background:' + wearColor2 + '22;border:1px solid ' + wearColor2 + '44">' + wearLabel2 + '</span>';
+    if (item.statTrak) html += '<span class="inv-card-st">ST&#8482; ' + item.kills + '</span>';
+    html += '</div></div>';
+  }
+  grid.innerHTML = html;
+}
+
 function removeAllStatTrak() {
   var count = items.filter(function(it) { return it.statTrak; }).length;
   if (!count) return;
-  if (!confirm('Remove all ' + count + ' StatTrak item' + (count !== 1 ? 's' : '') + ' from the queue?')) return;
-  items = items.filter(function(it) { return !it.statTrak; });
-  queueSelectedSet = {};
+  if (!confirm('Strip StatTrak™ from ' + count + ' item' + (count !== 1 ? 's' : '') + '? The items will stay in the queue.')) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].statTrak) {
+      items[i].statTrak = false;
+      items[i].kills = 0;
+    }
+  }
   renderQueue();
   if (skinDBLoaded) renderGrid();
-  showToastMsg('\u2713 Removed ' + count + ' StatTrak item' + (count !== 1 ? 's' : ''));
+  showToastMsg('\u2713 Stripped StatTrak\u2122 from ' + count + ' item' + (count !== 1 ? 's' : ''));
 }
 
 function removeItem(i) {items.splice(i,1);delete queueSelectedSet[i];renderQueue();if (skinDBLoaded)renderGrid();}
@@ -4915,6 +5031,9 @@ document.getElementById('skinToggle').addEventListener('change',function() {
     document.getElementById('finishCatalog').value = '';
   }
 });
+function updateSkinToggle() {
+  document.getElementById('skinToggle').dispatchEvent(new Event('change'));
+}
 document.getElementById('statTrakCheck').addEventListener('change',function() {
   document.getElementById('killsField').style.display = this.checked ? 'flex' : 'none';
   /* Auto-set quality to Strange (9) when StatTrak is enabled, per community guide */
@@ -5079,28 +5198,91 @@ function clearActiveHistoryEntry() {
 
 function generateAll() {
   if (!items.length) {alert('Add at least one item first.');return;}
-  var raw = getRawOutput();
-  document.getElementById('outputBox').innerHTML = syntaxHighlight(escHtml(raw));
-  if (activeHistoryIdx >= 0 && activeHistoryIdx < genHistory.length) {
-    /* Update the active history entry with current queue + output */
-    var h = genHistory[activeHistoryIdx];
-    h.raw      = raw;
-    h.snapshot = JSON.parse(JSON.stringify(items));
-    h.itemCount = items.length;
-    h.ts = (function() {
-      var now = new Date();
-      return (now.getMonth()+1) + '/' + now.getDate() + ' ' +
-             now.getHours().toString().padStart(2,'0') + ':' +
-             now.getMinutes().toString().padStart(2,'0');
-    })();
-    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(genHistory)); } catch(e) {}
-    renderHistory();
-    /* Re-apply active highlight after re-render */
-    setTimeout(function() { setActiveHistoryEntry(activeHistoryIdx); }, 0);
-    showToastMsg('\u2713 Updated: ' + h.label);
-  } else {
-    saveHistoryEntry(raw);
-  }
+  var genBtn = document.getElementById('generateBtn');
+  var wrap = document.getElementById('genProgressWrap');
+  var bar  = document.getElementById('genProgressBar');
+  var outputBox = document.getElementById('outputBox');
+
+  /* Show progress bar */
+  if (wrap) { wrap.style.display='block'; }
+  if (bar)  { bar.style.width='0%'; bar.style.transition='none'; }
+  if (genBtn) genBtn.disabled = true;
+  outputBox.innerHTML = '';
+
+  /* Use setTimeout to let the browser paint the progress bar before blocking work */
+  setTimeout(function() {
+    /* Step 1: build raw output (chunked via entries) */
+    var CHUNK = 50;
+    var entries = [];
+    var equips  = [];
+    var total   = items.length;
+    var i       = 0;
+
+    function processChunk() {
+      var end = Math.min(i + CHUNK, total);
+      for (; i < end; i++) {
+        entries.push(generateEntry(items[i]));
+        if (items[i].equipped) equips.push(generateDefaultEquip(items[i]));
+      }
+      var pct = Math.round((i / total) * 80);
+      if (bar) { bar.style.transition='width 0.08s linear'; bar.style.width = pct + '%'; }
+
+      if (i < total) {
+        setTimeout(processChunk, 0);
+      } else {
+        finishGenerate(entries, equips);
+      }
+    }
+
+    function finishGenerate(ents, eqs) {
+      var raw = '"items"\n{\n' + ents.join('\n') + '\n}';
+      if (eqs.length) raw += '\n"default_equips"\n{\n' + eqs.join('\n') + '\n}';
+
+      if (bar) { bar.style.width = '90%'; }
+
+      /* Syntax highlight only for small outputs — skip for 80+ items to avoid blocking */
+      setTimeout(function() {
+        var HIGHLIGHT_LIMIT = 80;
+        if (items.length <= HIGHLIGHT_LIMIT) {
+          outputBox.innerHTML = syntaxHighlight(escHtml(raw));
+        } else {
+          /* Plain text — fast, no DOM thrash */
+          var pre = document.createElement('pre');
+          pre.className = 'output-plain';
+          pre.textContent = raw;
+          outputBox.innerHTML = '';
+          outputBox.appendChild(pre);
+        }
+        if (bar)  { bar.style.width = '100%'; }
+
+        setTimeout(function() {
+          if (wrap) wrap.style.display = 'none';
+          if (bar)  bar.style.width = '0%';
+          if (genBtn) genBtn.disabled = false;
+        }, 400);
+
+        if (activeHistoryIdx >= 0 && activeHistoryIdx < genHistory.length) {
+          var h = genHistory[activeHistoryIdx];
+          h.raw = raw; h.snapshot = JSON.parse(JSON.stringify(items));
+          h.itemCount = items.length;
+          h.ts = (function() {
+            var now = new Date();
+            return (now.getMonth()+1) + '/' + now.getDate() + ' ' +
+                   now.getHours().toString().padStart(2,'0') + ':' +
+                   now.getMinutes().toString().padStart(2,'0');
+          })();
+          try { localStorage.setItem(HISTORY_KEY, JSON.stringify(genHistory)); } catch(e) {}
+          renderHistory();
+          setTimeout(function() { setActiveHistoryEntry(activeHistoryIdx); }, 0);
+          showToastMsg('\u2699 Updated: ' + h.label);
+        } else {
+          saveHistoryEntry(raw);
+        }
+      }, 0);
+    }
+
+    processChunk();
+  }, 16); /* 16ms — one frame — lets browser repaint first */
 }
 function copyOutput() {
   navigator.clipboard.writeText(getRawOutput()).then(function() {
@@ -5144,7 +5326,7 @@ var GUIDE_STEPS=[
   next:'Next →'
 },
 {
-  targetId:'skinGrid',
+  targetId:'skinGridWrap',
   badge:'Step 4 of 7 · Pick a Skin',
   instruction:'Click any skin from the browser',
   hint:'Browse or search for a skin. <code>Hover</code> a card for a preview. <code>Click</code> to select it — it appears in the Item Config panel on the left.',
@@ -5300,6 +5482,9 @@ function _doPositionGuide(targetId, useParent, withHighlight) {
   var pad = 8;
   var rl = r.left / zoom, rt = r.top / zoom;
   var rw = r.width / zoom, rh = r.height / zoom;
+  /* For large scrollable containers (e.g. skinGridWrap), cap highlight height
+     so the guide card positions near the top of the element */
+  if (targetId === 'skinGridWrap') rh = Math.min(rh, 180);
 
   /* Highlight */
   if (withHighlight) {
@@ -5458,12 +5643,19 @@ function _positionFt(el) {
    ================================================== */
 var STORAGE_KEY = 'csgo_inv_queue_v1';
 
+var _saveQueueTimer = null;
 function saveQueue() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch(e) { /* localStorage may be unavailable */ }
+  /* Debounce: collapse rapid saves into one write after 600ms idle */
+  if (_saveQueueTimer) clearTimeout(_saveQueueTimer);
+  _saveQueueTimer = setTimeout(function() {
+    _saveQueueTimer = null;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch(e) {}
+  }, 600);
 }
 
+var _loadingQueue = false;
 function loadQueue() {
   try {
     var raw = localStorage.getItem(STORAGE_KEY);
@@ -5479,7 +5671,9 @@ function loadQueue() {
     }
     document.getElementById('itemIndex').value    = maxIdx + 1;
     document.getElementById('inventorySlot').value = maxSlot + 1;
+    _loadingQueue = true;
     renderQueue();
+    _loadingQueue = false;
     /* Show a brief toast so the user knows the queue was restored */
     showToastMsg('\u21ba Queue restored (' + items.length + ' item' + (items.length !== 1 ? 's' : '') + ')');
   } catch(e) { /* ignore corrupt data */ }
@@ -5493,7 +5687,7 @@ function clearSavedQueue() {
 var _origRenderQueue = renderQueue;
 renderQueue = function() {
   _origRenderQueue();
-  saveQueue();
+  if (!_loadingQueue) saveQueue();
 };
 
 /* Patch removeItem to auto-save */
@@ -6072,8 +6266,19 @@ function toggleHistory() {
 function previewHistory(i) {
   var h = genHistory[i];
   if (!h) return;
-  /* Load the output text */
-  document.getElementById('outputBox').innerHTML = syntaxHighlight(escHtml(h.raw || ''));
+  /* Load the output text — skip expensive syntax highlight for large outputs */
+  var raw = h.raw || '';
+  var HIGHLIGHT_LIMIT = 80;
+  if (h.snapshot && h.snapshot.length > HIGHLIGHT_LIMIT) {
+    var pre = document.createElement('pre');
+    pre.className = 'output-plain';
+    pre.textContent = raw;
+    var ob = document.getElementById('outputBox');
+    ob.innerHTML = '';
+    ob.appendChild(pre);
+  } else {
+    document.getElementById('outputBox').innerHTML = syntaxHighlight(escHtml(raw));
+  }
   /* Restore the queue snapshot */
   if (h.snapshot) {
     items = JSON.parse(JSON.stringify(h.snapshot));
@@ -6107,7 +6312,7 @@ function restoreHistory(i) {
   document.getElementById('itemIndex').value     = maxIdx + 1;
   document.getElementById('inventorySlot').value = maxSlot + 1;
   renderQueue();
-  if (skinDBLoaded) renderGrid();
+  if (skinDBLoaded) requestAnimationFrame(renderGrid);
   showToastMsg('\u21ba Restored: ' + h.label);
 }
 
