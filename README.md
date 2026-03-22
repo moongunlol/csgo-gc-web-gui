@@ -1,7 +1,7 @@
-
+P.S there better one on https://github.com/dricotec/csgo_gc_inventory-editor it have case and better performance
 # csgo-gc-web-gui
 
-P.S there better one on https://github.com/dricotec/csgo_gc_inventory-editor it have case and better performance
+
 
 This is a html Inventory Builder website for csgo_cs https://github.com/mikkokko/csgo_gc as i know one of you are to lazy to do some coding in inventory.txt 
 
