@@ -1,4 +1,4 @@
-P.S there better one on https://github.com/dricotec/csgo_gc_inventory-editor it have case and better performance
+P.S there better one on https://github.com/dricotec/csgo_gc_inventory-editor it have cases and better performance
 # csgo-gc-web-gui
 
 
