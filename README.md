@@ -14,4 +14,5 @@ Dowload `all.json` from https://github.com/moongunlol/CSGO-API/blob/main/public/
 
 # to-do
 need to fix lag on Stickers
+
 add keys
