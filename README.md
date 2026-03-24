@@ -11,3 +11,7 @@ https://moongunlol.github.io/csgo-gc-web-gui/
 
 Dowload `all.json` from https://github.com/moongunlol/CSGO-API/blob/main/public/api/en/all.json
 ![Logo](https://github.com/moongunlol/csgo-gc-web-gui/blob/main/Screenshot%202026-03-12%20170213.png?raw=true)
+
+# to-do
+lag on Stickers
+add 
